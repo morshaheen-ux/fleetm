@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Fleet Management</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0ede8;color:#1a1a1a;font-size:14px}
+input,select{font-family:inherit;font-size:13px;border:1px solid #ccc;border-radius:6px;padding:5px 9px;height:32px;background:#fff;color:#1a1a1a;outline:none;width:100%}
+input:focus,select:focus{border-color:#555}
+button{font-family:inherit;font-size:12px;border:1px solid #ccc;border-radius:6px;padding:5px 10px;cursor:pointer;background:#fff;height:32px;display:inline-flex;align-items:center;gap:4px}
+button:hover{background:#f0f0f0}
+.btn-blue{background:#e6f1fb;color:#185fa5;border-color:#b5d4f4}
+.btn-blue:hover{background:#d0e8f8}
+.btn-red{background:#fcebeb;color:#a32d2d;border-color:#f7c1c1}
+.topbar{background:#fff;border-bottom:1px solid #e0e0e0;padding:0 16px;position:sticky;top:0;z-index:100}
+.topbar-inner{display:flex;align-items:center;gap:8px;padding:10px 0 0}
+.logo{font-weight:600;font-size:15px;margin-right:8px;white-space:nowrap}
+.tabs{display:flex;gap:2px;overflow-x:auto;flex:1;padding-bottom:0}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:6px 10px;font-size:12px;cursor:pointer;white-space:nowrap;height:auto;color:#666}
+.tab:hover{background:#f5f5f5;color:#333}
+.tab.active{border-bottom-color:#333;color:#111;font-weight:500}
+.content{padding:16px}
+.toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.toolbar input{flex:1;min-width:180px;height:32px}
+.toolbar select{width:auto;min-width:120px}
+.count{font-size:12px;color:#888;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+th{padding:8px 10px;text-align:left;font-size:11px;color:#888;font-weight:500;border-bottom:1px solid #eee;white-space:nowrap}
+td{padding:7px 10px;border-bottom:1px solid #f5f5f5;font-size:12px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafafa;cursor:pointer}
+.badge{display:inline-block;padding:2px 7px;border-radius:5px;font-size:11px;font-weight:500;white-space:nowrap}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:10px;padding:20px;width:min(560px,95vw);max-height:90vh;overflow-y:auto}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.modal-title{font-size:16px;font-weight:600}
+.close-btn{background:none;border:none;font-size:20px;cursor:pointer;color:#888;height:auto;padding:0 4px}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:12px;color:#666;margin-bottom:4px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.notify{position:fixed;top:16px;right:16px;z-index:999;background:#eaf3de;color:#3b6d11;border:1px solid #c0dd97;border-radius:7px;padding:9px 14px;font-size:13px;display:none}
+.notify.error{background:#fcebeb;color:#a32d2d;border-color:#f7c1c1}
+.dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.stat-card{background:#fff;border-radius:8px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
+.stat-label{font-size:12px;color:#888;margin-bottom:4px}
+.stat-value{font-size:26px;font-weight:600}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;font-size:12px}
+.bar-label{width:150px;text-align:right;color:#888;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;background:#eee;border-radius:3px;height:14px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px}
+.bar-count{width:24px;font-weight:500}
+.settings-section{max-width:520px}
+.settings-section h3{font-size:14px;font-weight:600;margin:16px 0 8px}
+.tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.tag{background:#e6f1fb;color:#185fa5;border-radius:5px;padding:2px 9px;font-size:12px}
+.detail-table td:first-child{color:#888;padding-right:12px;white-space:nowrap;width:120px}
+.detail-table td{padding:5px 0;font-size:13px}
+.img-preview{max-width:180px;max-height:110px;border-radius:6px;border:1px solid #eee;margin-top:6px}
+.action-row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.license-icon{color:#3b6d11;font-weight:bold}
+.no-results{padding:32px;text-align:center;color:#aaa}
+.plate{font-weight:600;letter-spacing:0.3px}
+.loading{text-align:center;padding:40px;color:#888;font-size:15px}
+.sync-badge{font-size:11px;color:#888;margin-left:8px}
+.sync-badge.syncing{color:#185fa5}
+.sync-badge.synced{color:#3b6d11}
+</style>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div id="app"><div class="loading">🔄 Connecting to database...</div></div>
+<div id="notify" class="notify"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCcoKlqzxsLGKDPWouwgWS6Wda8m6Uqa_E",
+  authDomain: "fleet-management-ae551.firebaseapp.com",
+  projectId: "fleet-management-ae551",
+  storageBucket: "fleet-management-ae551.firebasestorage.app",
+  messagingSenderId: "100669914003",
+  appId: "1:100669914003:web:90ac44392014df193ac666"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+const FLEET_DOC = doc(db, 'fleet', 'data');
+
+const COLORS = [
+  {bg:'#eaf3de',text:'#3B6D11',border:'#c0dd97'},
+  {bg:'#e6f1fb',text:'#185fa5',border:'#b5d4f4'},
+  {bg:'#faeeda',text:'#854f0b',border:'#fac775'},
+  {bg:'#fbeaf0',text:'#993556',border:'#f4c0d1'},
+  {bg:'#eeedfe',text:'#534AB7',border:'#cecbf6'},
+];
+const COMPANY_IDX = {Rangone:0,SBDS:1,Guardian:2};
+function getColor(company, companies){
+  if(company in COMPANY_IDX) return COLORS[COMPANY_IDX[company]];
+  const idx = companies.indexOf(company) % COLORS.length;
+  return COLORS[idx<0?0:idx];
+}
+
+const INIT_DATA = {
+  companies:['Rangone','SBDS','Guardian'],
+  managers:[
+    {name:'Hussam Hamburg',company:'SBDS'},{name:'Saleh Munich',company:'SBDS'},
+    {name:'Saleh DBW',company:'SBDS'},{name:'Basel NRW',company:'SBDS'},
+    {name:'Mubarak NRW',company:'SBDS'},{name:'Saleh Hamburg DHH',company:'SBDS'},
+    {name:'Malek DRP',company:'SBDS'},{name:'Abu Julia Hamburg',company:'Guardian'},
+    {name:'Mazen Frankfurt',company:'Guardian'},{name:'Mazen NRW',company:'Guardian'},
+    {name:'Saleh DBW1',company:'Guardian'},{name:'Tarek Hannover',company:'SBDS'},
+    {name:'Tarek Munich',company:'Guardian'},{name:'Rangone',company:'Rangone'},
+    {name:'Gemietete Autos',company:'Rangone'},
+  ],
+  cars:[
+    {id:1,plate:'HH GM 1424',name:'Alsaour Ghofran',model:'BMW 187',city:'Hamburg',manager:'Hussam Hamburg',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:2,plate:'HH NR 1086',name:'Albouzou Mohamad Raji',model:'VW Touran',city:'Hamburg',manager:'Hussam Hamburg',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:3,plate:'HH Q 6825',name:'Kusaybany Walaa',model:'VW Golf 1KP',city:'Hamburg',manager:'Hussam Hamburg',company:'SBDS',notes:'Rangeone+SBDS',license:'',currentKm:'',drivenKm:''},
+    {id:4,plate:'WL SD1101',name:'Budri Oliver Christopher',model:'Skoda Fabia',city:'Hamburg',manager:'Hussam Hamburg',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:5,plate:'RZ OD616',name:'Inser Obada',model:'Ford Focus',city:'Hamburg',manager:'Hussam Hamburg',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:6,plate:'WL MS887',name:'Mohammed Saad Farahaldour',model:'VW Polo 6R',city:'Hamburg',manager:'Hussam Hamburg',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:7,plate:'HH Q6018',name:'Sedighi Njibullah',model:'VW Polo 6R',city:'Hamburg',manager:'Hussam Hamburg',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:8,plate:'OH GG 9999',name:'Barho Iman',model:'VW Golf 1KP',city:'Hamburg',manager:'Hussam Hamburg',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:9,plate:'HH AA 3777',name:'Al omar Ahmed',model:'Hyundai FDH',city:'Hamburg',manager:'Hussam Hamburg',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:10,plate:'PI IX 438',name:'Almasri Mohammad',model:'Chevrolet Matiz',city:'Hamburg',manager:'Hussam Hamburg',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:11,plate:'SE BL 713',name:'Alrahmoun Abd El kareem',model:'Hyundai Motor DFH',city:'Hamburg',manager:'Hussam Hamburg',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:12,plate:'H T 554',name:'Almohamadomaralrajeh Thaer',model:'BMW 1er Reihe 187',city:'Hamburg',manager:'Hussam Hamburg',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:13,plate:'M PA2149',name:'Mihaylov Yanis Georgiev',model:'Ford Fiesta JD3',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:14,plate:'M UY7008',name:'Kheshfeh Mohamad',model:'VW Golf 1J',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:15,plate:'M EN4138',name:'Soltani Wahid Ahmad',model:'Opel Corsa',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:16,plate:'M UU1999',name:'Mousli Mohamad Nour',model:'VW Polo 6R',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'Rangeone+SBDS',license:'',currentKm:'',drivenKm:''},
+    {id:17,plate:'M AN9864',name:'Sido Ahmad',model:'Fiat Punto 199',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:18,plate:'M JP2420',name:'Angelov Yanko Asenov',model:'Opel Corsa -C',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:19,plate:'M RA6839',name:'Samil Hasan Amish',model:'Smart forfour 454',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:20,plate:'MUC KK297',name:'Asenova Monika',model:'VW Polo 6R',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:21,plate:'M YY3735',name:'Fattouh Mohamad Nour',model:'Renault Clio R',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:22,plate:'M KO1577',name:'Alyoussef Fatema',model:'Skoda Fabia 5J',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:23,plate:'M AR284',name:'Costea Maria-Alina',model:'VW Passat 3C',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:24,plate:'M XS9550',name:'Gkaragkasidis Michail',model:'Nissan Micra K11',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:25,plate:'MUC AY888',name:'Yosifov Albert Strahilov',model:'VW Polo 6R',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:26,plate:'M XS1025',name:'Hoque Shariful',model:'Toyota YAR XP9F',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:27,plate:'M RJ1998',name:'Sharif Ramadan',model:'Hyundai Motor CZ',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:28,plate:'M FU3911',name:'Mostafa Samir Elgendy',model:'Toyota AYGO AB1',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:29,plate:'M GB7029',name:'Azizi Rahim',model:'Opel Corsa S-D',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:30,plate:'LA AY8611',name:'Nahar Abdalla',model:'VW Bora 1J',city:'Munich',manager:'Saleh Munich',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:31,plate:'S ZK1138',name:'Alkhter Mahmud',model:'VW Polo 9N',city:'DBW Stuttgart',manager:'Saleh DBW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:32,plate:'ES XO5505',name:'Altalab Abdullah',model:'Ford Focus C-Max',city:'DBW Stuttgart',manager:'Saleh DBW',company:'SBDS',notes:'Klein zulassung Fehlt',license:'',currentKm:'',drivenKm:''},
+    {id:33,plate:'KA ET7012',name:'Assani Layth',model:'Chrysler C200',city:'DBW Stuttgart',manager:'Saleh DBW',company:'SBDS',notes:'Rangeone+SBDS',license:'',currentKm:'',drivenKm:''},
+    {id:34,plate:'NT JS 1975',name:'Jomah Mohamad',model:'Opel Agila H-B',city:'DBW Stuttgart',manager:'Saleh DBW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:35,plate:'ES RG 4321',name:'Rahal Ahmad Chaaban',model:'VW Polo 6R',city:'DBW Stuttgart',manager:'Saleh DBW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:36,plate:'S PQ1312',name:'Mawal Hasan',model:'Opel Corsa S-D',city:'DBW Stuttgart',manager:'Saleh DBW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:37,plate:'S MR80',name:'Alnajem Mohammad',model:'Seat Ibiza 6L',city:'DBW Stuttgart',manager:'Saleh DBW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:38,plate:'BB OP 19',name:'Musaiev Emin',model:'VW Golf 1J',city:'DBW Stuttgart',manager:'Saleh DBW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:39,plate:'LB AB 2022',name:'Hagyousef Abdalkader',model:'VW Golf 1K',city:'DBW Stuttgart',manager:'Saleh DBW',company:'SBDS',notes:'Klein zulassung Fehlt',license:'',currentKm:'',drivenKm:''},
+    {id:40,plate:'ES XS 4340',name:'Al Ali Muslim',model:'Ford Jas',city:'DBW Stuttgart',manager:'Saleh DBW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:41,plate:'AC FI733',name:'Alshallal Basel',model:'Hyundai Motor MXI',city:'NRW',manager:'Basel NRW',company:'SBDS',notes:'Klein zulassung Fehlt',license:'',currentKm:'',drivenKm:''},
+    {id:42,plate:'OS SH36',name:'Scharaf Mazen',model:'Seat Ibiza 6L',city:'NRW',manager:'Basel NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:43,plate:'BM QQ830',name:'Al zardo Mohammad',model:'Hyundai Motor IND',city:'NRW',manager:'Basel NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:44,plate:'K MC2341',name:'Alshallal Basel',model:'VW Golf 1K',city:'NRW',manager:'Basel NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:45,plate:'HSK P4503',name:'Al Melham Ali',model:'Mazda 6 GG1',city:'NRW',manager:'Basel NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:46,plate:'BM MR4747',name:'Abdo Osman Omar',model:'Opel Corsa BM11',city:'NRW',manager:'Basel NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:47,plate:'D NF 2010',name:'Alghabra Nour',model:'VW Golf 1K',city:'NRW',manager:'Basel NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:48,plate:'BM QG898',name:'KHodrawi Mohamed',model:'Ford Fiesta',city:'NRW',manager:'Basel NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:49,plate:'K KN1938',name:'Alsatouf Mohamad',model:'Ford Fiesta JD3',city:'NRW',manager:'Mubarak NRW',company:'SBDS',notes:'Klein zulassung Fehlt',license:'',currentKm:'',drivenKm:''},
+    {id:50,plate:'EU F2006',name:'Altoma Mohamad Amen',model:'VW Golf 1K',city:'NRW',manager:'Mubarak NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:51,plate:'AH SI2890',name:'Radwan Radwan',model:'VW Polo 9N',city:'NRW',manager:'Mubarak NRW',company:'SBDS',notes:'Rangeone+SBDS',license:'',currentKm:'',drivenKm:''},
+    {id:52,plate:'DO AN996',name:'Aleid Nawras',model:'Opel Vectra C',city:'NRW',manager:'Mubarak NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:53,plate:'DO HO 1122',name:'Almodhi Muayad',model:'VW Touran',city:'NRW',manager:'Mubarak NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:54,plate:'DO XL 541',name:'Al sattam Qusay',model:'Skoda Fabia 5J',city:'NRW',manager:'Mubarak NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:55,plate:'DO AP 194',name:'Alhamad Malka',model:'Renault Megane Scenic',city:'NRW',manager:'Mubarak NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:56,plate:'BN MS5805',name:'Kallel Mehdi',model:'Hyundai Motor PA',city:'NRW',manager:'Mubarak NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:57,plate:'WAN LE23',name:'Kassar Mouayad',model:'Kia Picanto BA',city:'NRW',manager:'Mubarak NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:58,plate:'E QH 7916',name:'Al mohamad Mohamad',model:'Toyota Yaris XP9',city:'NRW',manager:'Mubarak NRW',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:59,plate:'HH A 4898',name:'Alsayed Ahmad Mohamad Saeed',model:'Peugeot 206',city:'Hamburg',manager:'Saleh Hamburg DHH',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:60,plate:'HH J 2918',name:'Youssef Abdu Alfatah',model:'VW Passat 3C',city:'Hamburg',manager:'Saleh Hamburg DHH',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:61,plate:'FS EX 131',name:'Alsoleman Mohamad Al Khaled',model:'Opel Astra GTC',city:'Hamburg',manager:'Saleh Hamburg DHH',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:62,plate:'HH JA 1727',name:'Hritani Mohamad',model:'Mitsubishi Lancer CS0',city:'Hamburg',manager:'Saleh Hamburg DHH',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:63,plate:'HH Y 3160',name:'Chemdin Yousef',model:'VW Golf 1J',city:'Hamburg',manager:'Saleh Hamburg DHH',company:'SBDS',notes:'Rangeone+SBDS',license:'',currentKm:'',drivenKm:''},
+    {id:64,plate:'NF SZ 2020',name:'Dabaliz Mohammad',model:'Mercedes Benz C220',city:'Hamburg',manager:'Saleh Hamburg DHH',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:65,plate:'SE SL6475',name:'Alsayed Ahmad',model:'Ford Fusion JU2',city:'Hamburg',manager:'Saleh Hamburg DHH',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:66,plate:'HH TN 941',name:'Maatuk Kamel',model:'Toyota Corolla E12U',city:'Hamburg',manager:'Saleh Hamburg DHH',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:67,plate:'HG OH 2002',name:'Almohammad Alkhal',model:'Opel Corsa C',city:'Grolsheim',manager:'Malek DRP',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:68,plate:'KH Z 9598',name:'Zadran Eid Marjan',model:'Opel Corsa C',city:'Grolsheim',manager:'Malek DRP',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:69,plate:'MZ TA9811',name:'Alibrahim Taha',model:'Picanto SA',city:'Grolsheim',manager:'Malek DRP',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:70,plate:'F MN 1111',name:'Alahmad Basel',model:'VW Golf 1K',city:'Grolsheim',manager:'Malek DRP',company:'SBDS',notes:'Klein zulassung Fehlt',license:'',currentKm:'',drivenKm:''},
+    {id:71,plate:'MZ AR 810',name:'Al Bakur Rami',model:'VW Golf 1K',city:'Grolsheim',manager:'Malek DRP',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:72,plate:'PI SY596',name:'Baza Nour Mohamed Sifelnasr',model:'Honda Jazz GE2',city:'Hamburg',manager:'Abu Julia Hamburg',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:73,plate:'HH AS 5580',name:'Aljomaa Ahmad',model:'VW Golf 1KP',city:'Hamburg',manager:'Abu Julia Hamburg',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:74,plate:'HH ML 351',name:'Hammo Abdallah',model:'VW Polo 6N',city:'Hamburg',manager:'Abu Julia Hamburg',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:75,plate:'HH MH 2112',name:'Hajem Mohamed',model:'Chevrolet Aveo Klas',city:'Hamburg',manager:'Abu Julia Hamburg',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:76,plate:'HH RI 1900',name:'Ibrahim Ramadan',model:'VW Golf 1K',city:'Hamburg',manager:'Abu Julia Hamburg',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:77,plate:'PI UX199',name:'Rasoul Khalil',model:'Honda Jazz GE3',city:'Hamburg',manager:'Abu Julia Hamburg',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:78,plate:'HH O 6802',name:'Al Hassani Mohammad Kher',model:'VW Golf 1J',city:'Hamburg',manager:'Abu Julia Hamburg',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:79,plate:'HH MI 1994',name:'Al Hamed Mohamad Faiz',model:'Ford Fiesta JH1',city:'Hamburg',manager:'Abu Julia Hamburg',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:80,plate:'HH TX 2506',name:'Mustafa Sharfan',model:'VW Polo 6R',city:'Hamburg',manager:'Abu Julia Hamburg',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:81,plate:'HH P 2985',name:'Abdelrahman Elsayed',model:'Renault Megane SCE',city:'Hamburg',manager:'Abu Julia Hamburg',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:82,plate:'OH BQ1404',name:'Yassen Heba',model:'VW Tiguan 5N',city:'Hamburg',manager:'Abu Julia Hamburg',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:83,plate:'GG RB 158',name:'Refaat Al Yousef',model:'Hyundai Motor 110',city:'Frankfurt',manager:'Mazen Frankfurt',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:84,plate:'WI JL499',name:'Ahmadi Walid',model:'Ford Fiesta JA8',city:'Frankfurt',manager:'Mazen Frankfurt',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:85,plate:'WI T1713',name:'Tarar Luqman Ahmad',model:'VW Golf',city:'Frankfurt',manager:'Mazen Frankfurt',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:86,plate:'WI QQ739',name:'Qayoomi Ahamd Tamim',model:'Hyundai 110',city:'Frankfurt',manager:'Mazen Frankfurt',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:87,plate:'OF AL 7777',name:'Badnjki Ahmad Mutaz',model:'Chrysler C 180',city:'Frankfurt',manager:'Mazen Frankfurt',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:88,plate:'DA B 1194',name:'Mardinii Giwan',model:'Fiat Panda 169',city:'Frankfurt',manager:'Mazen Frankfurt',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:89,plate:'DI MY 20',name:'Badnjki Mahmoud Yamen',model:'Opel Astra G CC',city:'Frankfurt',manager:'Mazen Frankfurt',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:90,plate:'DA NM 140',name:'Mazaal Noyreddin',model:'Ford Focus DA3',city:'Frankfurt',manager:'Mazen Frankfurt',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:91,plate:'DA BS 993',name:'Shekfa Anas',model:'Opel Zafira BC11',city:'Frankfurt',manager:'Mazen Frankfurt',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:92,plate:'UH B 474',name:'Alhusain Ali',model:'Skoda Octavia',city:'Frankfurt',manager:'Mazen Frankfurt',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:93,plate:'BO QF602',name:'Khsrof Heba / Mardinli Gewan',model:'VW Golf Plus 1KP',city:'NRW',manager:'Mazen NRW',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:94,plate:'DIN Y6',name:'Hayder Ayat',model:'VW Golf 1K',city:'NRW',manager:'Mazen NRW',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:95,plate:'VIE MH202',name:'Alhamesh Mohammed',model:'Seat Ibiza 6J',city:'NRW',manager:'Mazen NRW',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:96,plate:'OAL FH102',name:'Alkhelifa Fedaa',model:'Seat Ibiza 6L',city:'NRW',manager:'Mazen NRW',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:97,plate:'GE OW 8117',name:'Al kasser Khaled',model:'Hyundai Motor IX20',city:'NRW',manager:'Mazen NRW',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:98,plate:'BO XZ695',name:'Almugharbel Yoser',model:'Skoda Fabia 6Y',city:'NRW',manager:'Mazen NRW',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:99,plate:'BO QG139',name:'Ataiaa Mohammad Eid',model:'Skoda Fabia 5J',city:'NRW',manager:'Mazen NRW',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:100,plate:'DU EA327',name:'Jansiz Mohammad Aied',model:'Chevrolet Matiz Klak',city:'NRW',manager:'Mazen NRW',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:101,plate:'LU SY 92',name:'Altawel Belal',model:'Daimler C 200 CDI',city:'DBW1',manager:'Saleh DBW1',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:102,plate:'LU HA 103',name:'Alhafiz Adnan',model:'VW Golf plus 1KP',city:'DBW1',manager:'Saleh DBW1',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:103,plate:'MA JH 30',name:'Zaien Aldin Osama',model:'BMW 316 D 3K',city:'DBW1',manager:'Saleh DBW1',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:104,plate:'MA CX 9555',name:'Mohareb Mohammed',model:'Ford Fiesta JH1',city:'Frankfurt',manager:'Saleh DBW1',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:105,plate:'HD YS 200',name:'Hawari Majd',model:'Nissan Micra K11',city:'Frankfurt',manager:'Saleh DBW1',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:106,plate:'MA VT 5559',name:'Shaji Omar',model:'Opel Corsa S-D',city:'Frankfurt',manager:'Saleh DBW1',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:107,plate:'H XG 617',name:'Alabdullah Zainab',model:'Ford JK8',city:'Hannover',manager:'Tarek Hannover',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:108,plate:'H ND 2001',name:'Alfares Mohammad',model:'VW Polo 9N',city:'Hannover',manager:'Tarek Hannover',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:109,plate:'H EY 4011',name:'Al Atieh Ammar',model:'Seat Ibiza 6J',city:'Hannover',manager:'Tarek Hannover',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:110,plate:'NVP Y261',name:'Wolk Monika',model:'VW Golf 1K',city:'Hannover',manager:'Tarek Hannover',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:111,plate:'H O 441',name:'Al khorashi Asem Zaid Ali Hasan',model:'Fiat ZFA 199',city:'Hannover',manager:'Tarek Hannover',company:'SBDS',notes:'Rangeone+SBDS',license:'',currentKm:'',drivenKm:''},
+    {id:112,plate:'H EL 660',name:'Mubarak Ali',model:'Chrysler E 220 CDI',city:'Hannover',manager:'Tarek Hannover',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:113,plate:'H XK 637',name:'Al hussein Amjad',model:'Chevrolet Cruze',city:'Hannover',manager:'Tarek Hannover',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:114,plate:'H SY 1331',name:'Afof Yassin Faed',model:'Opel Corsa -C',city:'Hannover',manager:'Tarek Hannover',company:'SBDS',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:115,plate:'M BA2917',name:'Mihaylov Asen',model:'Peugeot 2',city:'Munich',manager:'Tarek Munich',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:116,plate:'M PJ 3608',name:'Nassan Mohannad',model:'Ibiza 6J',city:'Munich',manager:'Tarek Munich',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:117,plate:'FS YX 152',name:'Al mubarek Ammar',model:'Hyundai MC',city:'Munich',manager:'Tarek Munich',company:'Guardian',notes:'Rangeone+SBDS',license:'',currentKm:'',drivenKm:''},
+    {id:118,plate:'M DY 2120',name:'Nassan Mohannad',model:'Seat Ibiza 6L',city:'Munich',manager:'Tarek Munich',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:119,plate:'PAF ZJ 767',name:'Alkhalaf Ahmad',model:'BMW 1K4',city:'Munich',manager:'Tarek Munich',company:'Guardian',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:120,plate:'B NM 2731',name:'',model:'',city:'Berlin',manager:'Rangone',company:'Rangone',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:121,plate:'B NM 2736',name:'',model:'',city:'Berlin',manager:'Rangone',company:'Rangone',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:122,plate:'B NM 2753',name:'',model:'',city:'Berlin',manager:'Rangone',company:'Rangone',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:123,plate:'B NM 2755',name:'',model:'',city:'Berlin',manager:'Rangone',company:'Rangone',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:124,plate:'B NM 2761',name:'',model:'',city:'Berlin',manager:'Rangone',company:'Rangone',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:125,plate:'B NM 2762',name:'',model:'',city:'Berlin',manager:'Rangone',company:'Rangone',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:126,plate:'B NM 2815',name:'',model:'',city:'Berlin',manager:'Rangone',company:'Rangone',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:127,plate:'B NM 2827',name:'',model:'',city:'Berlin',manager:'Rangone',company:'Rangone',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:128,plate:'B NM 3056',name:'',model:'',city:'Berlin',manager:'Rangone',company:'Rangone',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:129,plate:'B NM 3057',name:'',model:'',city:'Berlin',manager:'Rangone',company:'Rangone',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:130,plate:'B RG 7700',name:'',model:'',city:'Berlin',manager:'Rangone',company:'Rangone',notes:'',license:'',currentKm:'',drivenKm:''},
+    {id:131,plate:'B RG 9800',name:'',model:'',city:'Berlin',manager:'Rangone',company:'Rangone',notes:'',license:'',currentKm:'',drivenKm:''},
+  ],
+  customTabs:[]
+};
+
+let state = null;
+let activeTab = 'all';
+let search = '';
+let filterCompany = 'All';
+let modal = null;
+let selectedCar = null;
+let pendingLicense = '';
+let notifyTimer = null;
+let saving = false;
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function badge(company){
+  const c = getColor(company, state.companies);
+  return `<span class="badge" style="background:${c.bg};color:${c.text};border:1px solid ${c.border}">${esc(company)}</span>`;
+}
+
+function showNotify(msg, isError=false){
+  const n = document.getElementById('notify');
+  n.textContent = msg;
+  n.className = 'notify' + (isError?' error':'');
+  n.style.display = 'block';
+  clearTimeout(notifyTimer);
+  notifyTimer = setTimeout(()=>n.style.display='none', 3000);
+}
+
+async function saveToFirebase(){
+  if(saving) return;
+  saving = true;
+  try {
+    await setDoc(FLEET_DOC, state);
+    showNotify('✓ Saved to cloud');
+  } catch(e){
+    showNotify('⚠ Save failed: ' + e.message, true);
+  }
+  saving = false;
+}
+
+function getTabCars(tab){
+  if(tab==='all'||tab==='dashboard') return state.cars;
+  const ct = state.customTabs.find(t=>t.id===tab);
+  if(ct) return state.cars.filter(c=>ct.carIds&&ct.carIds.includes(c.id));
+  return state.cars.filter(c=>c.manager===tab);
+}
+
+function getFiltered(){
+  const q = search.toLowerCase();
+  return getTabCars(activeTab).filter(car=>{
+    const ms = !q||[car.plate,car.name,car.model,car.city,car.manager,car.company].some(f=>(f||'').toLowerCase().includes(q));
+    const mc = filterCompany==='All'||car.company===filterCompany;
+    return ms&&mc;
+  });
+}
+
+function renderTabs(){
+  const tabs = [
+    {id:'all',label:'All Cars'},{id:'dashboard',label:'Dashboard'},
+    ...state.managers.map(m=>{const c=getColor(m.company,state.companies);return{id:m.name,label:m.name,color:c.text};}),
+    ...state.customTabs.map(t=>({id:t.id,label:t.label,color:'#185fa5'})),
+    {id:'settings',label:'⚙'},
+  ];
+  return tabs.map(t=>{
+    const active = activeTab===t.id;
+    const style = active&&t.color?`border-bottom-color:${t.color};color:${t.color}`:'';
+    return `<button class="tab${active?' active':''}" style="${style}" onclick="setTab('${esc(t.id)}')">${esc(t.label)}</button>`;
+  }).join('');
+}
+
+function renderTable(){
+  const cars = getFiltered();
+  const rows = cars.length===0
+    ? `<tr><td colspan="11" class="no-results">No cars found</td></tr>`
+    : cars.map(car=>`<tr onclick="openCar(${car.id})">
+        <td class="plate">${esc(car.plate)}</td>
+        <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(car.name||'—')}</td>
+        <td>${esc(car.model||'—')}</td>
+        <td>${esc(car.city||'—')}</td>
+        <td>${badge(car.company)}</td>
+        <td style="color:#888;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(car.manager)}</td>
+        <td>${car.currentKm?Number(car.currentKm).toLocaleString()+' km':'—'}</td>
+        <td>${car.drivenKm?Number(car.drivenKm).toLocaleString()+' km':'—'}</td>
+        <td style="color:#888;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(car.notes||'—')}</td>
+        <td>${car.license?'<span class="license-icon">✓</span>':'—'}</td>
+        <td><button class="btn-red" style="height:26px;padding:2px 7px;font-size:11px" onclick="event.stopPropagation();deleteCar(${car.id})">✕</button></td>
+      </tr>`).join('');
+  return `
+    <div class="toolbar">
+      <input value="${esc(search)}" oninput="setSearch(this.value)" placeholder="Search plate, name, model, city..."/>
+      <select onchange="setFilter(this.value)">
+        <option${filterCompany==='All'?' selected':''}>All</option>
+        ${state.companies.map(c=>`<option${filterCompany===c?' selected':''}>${esc(c)}</option>`).join('')}
+      </select>
+      <button class="btn-blue" onclick="openModal('add')">+ Add Car</button>
+    </div>
+    <div class="count">${cars.length} car${cars.length!==1?'s':''}</div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Plate</th><th>Driver</th><th>Model</th><th>City</th><th>Company</th><th>Tab</th><th>Current km</th><th>Driven km</th><th>Notes</th><th>License</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function renderDashboard(){
+  const total = state.cars.length;
+  const cards = [`<div class="stat-card"><div class="stat-label">Total Cars</div><div class="stat-value">${total}</div></div>`,
+    ...state.companies.map(c=>{
+      const cnt=state.cars.filter(car=>car.company===c).length;
+      const col=getColor(c,state.companies);
+      return `<div class="stat-card" style="border-top:3px solid ${col.text}"><div class="stat-label">${esc(c)}</div><div class="stat-value">${cnt}</div></div>`;
+    })].join('');
+  const max = Math.max(...state.managers.map(m=>state.cars.filter(c=>c.manager===m.name).length),1);
+  const bars = state.managers.map(m=>{
+    const cnt=state.cars.filter(c=>c.manager===m.name).length;
+    const col=getColor(m.company,state.companies);
+    return `<div class="bar-row">
+      <div class="bar-label" title="${esc(m.name)}">${esc(m.name)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(cnt/max)*100}%;background:${col.text}"></div></div>
+      <div class="bar-count">${cnt}</div>${badge(m.company)}</div>`;
+  }).join('');
+  return `<div class="dashboard-grid">${cards}</div><h3 style="font-size:14px;font-weight:600;margin-bottom:10px">Cars per manager</h3>${bars}`;
+}
+
+function renderSettings(){
+  return `<div class="settings-section">
+    <h3>Companies</h3>
+    <div class="tag-list">${state.companies.map(c=>`<span style="display:inline-flex;align-items:center;gap:4px">${badge(c)} <button style="background:none;border:none;cursor:pointer;height:auto;padding:0;font-size:12px;color:#a32d2d" onclick="deleteCompany('${esc(c)}')">×</button></span>`).join('')}</div>
+    <div style="display:flex;gap:8px;margin-bottom:4px">
+      <input id="newCompany" placeholder="Company name" style="flex:1"/>
+      <button onclick="addCompany()">Add Company</button>
+    </div>
+    <h3>Manager Tabs</h3>
+    <div class="tag-list">${state.managers.map(m=>`<span class="tag" style="display:flex;align-items:center;gap:6px">${esc(m.name)} <button style="background:none;border:none;cursor:pointer;height:auto;padding:0;font-size:12px;color:#a32d2d" onclick="deleteManager('${esc(m.name)}')">×</button></span>`).join('')}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+      <input id="newManager" placeholder="Manager name" style="flex:1;min-width:130px"/>
+      <select id="newManagerCompany">${state.companies.map(c=>`<option>${esc(c)}</option>`).join('')}</select>
+      <button onclick="addManager()">Add Manager</button>
+    </div>
+    <h3>Custom Tabs</h3>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <input id="newTab" placeholder="Tab name" style="flex:1"/>
+      <button onclick="addCustomTab()">Add Tab</button>
+    </div>
+    ${state.customTabs.length?`<div class="tag-list">${state.customTabs.map(t=>`<span class="tag">${esc(t.label)} <button style="background:none;border:none;cursor:pointer;height:auto;padding:0;font-size:12px" onclick="deleteTab('${t.id}')">×</button></span>`).join('')}</div>`:''}
+    <h3>Export & Backup</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-blue" onclick="exportExcel()">📊 Export to Excel</button>
+      <button onclick="exportBackup()">⬇ Export JSON Backup</button>
+      <button onclick="document.getElementById('importFile').click()">⬆ Import JSON Backup</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(event)"/>
+    </div>
+    <p style="font-size:11px;color:#888;margin-top:6px">Excel export includes all cars with all details — open in Excel or Google Sheets</p>
+  </div>`;
+}
+
+function renderModal(){
+  if(!modal) return '';
+  if(modal==='add'||modal==='edit'){
+    const car = modal==='edit'?selectedCar:{plate:'',name:'',model:'',city:'',manager:state.managers[0]?.name||'',company:state.companies[0]||'',notes:'',license:'',currentKm:'',drivenKm:''};
+    return `<div class="overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <div class="modal-header"><div class="modal-title">${modal==='add'?'Add New Car':'Edit Car'}</div><button class="close-btn" onclick="closeModal()">×</button></div>
+        <div class="form-group"><label>Plate / Kennzeichen</label><input id="f_plate" value="${esc(car.plate)}"/></div>
+        <div class="form-group"><label>Driver Name</label><input id="f_name" value="${esc(car.name)}"/></div>
+        <div class="form-group"><label>Car Model</label><input id="f_model" value="${esc(car.model)}"/></div>
+        <div class="form-group"><label>City</label><input id="f_city" value="${esc(car.city)}"/></div>
+        <div class="form-group"><label>Company</label><select id="f_company">${state.companies.map(c=>`<option${c===car.company?' selected':''}>${esc(c)}</option>`).join('')}</select></div>
+        <div class="form-group"><label>Manager / Tab</label><select id="f_manager">${state.managers.map(m=>`<option${m.name===car.manager?' selected':''}>${esc(m.name)}</option>`).join('')}</select></div>
+        <div class="form-row">
+          <div class="form-group"><label>Current km</label><input type="number" id="f_currentKm" value="${esc(car.currentKm)}" placeholder="e.g. 45000"/></div>
+          <div class="form-group"><label>Driven km</label><input type="number" id="f_drivenKm" value="${esc(car.drivenKm)}" placeholder="e.g. 1200"/></div>
+        </div>
+        <div class="form-group"><label>Notes</label><input id="f_notes" value="${esc(car.notes)}"/></div>
+        <div class="form-group">
+          <label>Driving License Photo</label>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+            <button onclick="document.getElementById('licenseInput').click()">Upload Photo</button>
+            <input type="file" id="licenseInput" accept="image/*" style="display:none" onchange="handleLicense(event)"/>
+            ${car.license?'<span style="color:#3b6d11;font-size:12px">✓ Photo saved</span>':''}
+          </div>
+          <div id="licensePreview">${car.license?`<img class="img-preview" src="${car.license}" alt="License"/>`:''}
+          </div>
+        </div>
+        <div class="action-row">
+          <button onclick="closeModal()">Cancel</button>
+          <button class="btn-blue" onclick="saveCar(${modal==='edit'?car.id:-1})">${modal==='edit'?'Update Car':'Save Car'}</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  if(modal==='detail'&&selectedCar){
+    const car=selectedCar;
+    return `<div class="overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <div class="modal-header"><div class="modal-title">${esc(car.plate)}</div><button class="close-btn" onclick="closeModal()">×</button></div>
+        ${car.license?`<img class="img-preview" src="${car.license}" alt="License" style="margin-bottom:12px"/>`:''}
+        <table class="detail-table" style="width:100%">
+          ${[['Plate',car.plate],['Driver',car.name||'—'],['Model',car.model||'—'],['City',car.city||'—'],['Company','__badge__'],['Manager',car.manager],['Current km',car.currentKm?Number(car.currentKm).toLocaleString()+' km':'—'],['Driven km',car.drivenKm?Number(car.drivenKm).toLocaleString()+' km':'—'],['Notes',car.notes||'—']].map(([k,v])=>`<tr><td>${k}</td><td>${v==='__badge__'?badge(car.company):esc(v)}</td></tr>`).join('')}
+        </table>
+        <div class="action-row">
+          <button onclick="closeModal()">Close</button>
+          <button class="btn-blue" onclick="openModal('edit')">✎ Edit</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  return '';
+}
+
+function render(){
+  let content='';
+  if(activeTab==='dashboard') content=renderDashboard();
+  else if(activeTab==='settings') content=renderSettings();
+  else content=renderTable();
+  document.getElementById('app').innerHTML=`
+    <div class="topbar">
+      <div class="topbar-inner">
+        <div class="logo">🚗 Fleet Manager</div>
+        <div class="tabs">${renderTabs()}</div>
+      </div>
+    </div>
+    <div class="content">${content}</div>
+    ${renderModal()}`;
+}
+
+// Global actions
+window.setTab=t=>{activeTab=t;search='';filterCompany='All';render();}
+window.setSearch=v=>{search=v;render();}
+window.setFilter=v=>{filterCompany=v;render();}
+window.openCar=id=>{selectedCar=state.cars.find(c=>c.id===id);modal='detail';render();}
+window.openModal=m=>{modal=m;render();}
+window.closeModal=()=>{modal=null;render();}
+
+window.deleteCar=async id=>{
+  if(!confirm('Delete this car?'))return;
+  state.cars=state.cars.filter(c=>c.id!==id);
+  render();
+  await saveToFirebase();
+};
+
+window.handleLicense=e=>{
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    pendingLicense=ev.target.result;
+    const p=document.getElementById('licensePreview');
+    if(p) p.innerHTML=`<img class="img-preview" src="${ev.target.result}" alt="License"/>`;
+  };
+  r.readAsDataURL(file);
+};
+
+window.saveCar=async id=>{
+  const plate=document.getElementById('f_plate').value.trim();
+  if(!plate){alert('Plate is required');return;}
+  const existing = id!==-1?state.cars.find(c=>c.id===id):null;
+  const car={
+    plate,
+    name:document.getElementById('f_name').value,
+    model:document.getElementById('f_model').value,
+    city:document.getElementById('f_city').value,
+    company:document.getElementById('f_company').value,
+    manager:document.getElementById('f_manager').value,
+    currentKm:document.getElementById('f_currentKm').value,
+    drivenKm:document.getElementById('f_drivenKm').value,
+    notes:document.getElementById('f_notes').value,
+    license:pendingLicense||(existing?existing.license||'':''),
+  };
+  pendingLicense='';
+  if(id===-1){car.id=Date.now();state.cars.push(car);modal=null;}
+  else{const i=state.cars.findIndex(c=>c.id===id);if(i!==-1){state.cars[i]={...state.cars[i],...car};selectedCar=state.cars[i];}modal='detail';}
+  render();
+  await saveToFirebase();
+};
+
+window.addCompany=async()=>{
+  const v=document.getElementById('newCompany').value.trim();
+  if(!v||state.companies.includes(v)){showNotify('Already exists or empty',true);return;}
+  state.companies.push(v);render();await saveToFirebase();
+};
+window.addManager=async()=>{
+  const n=document.getElementById('newManager').value.trim();
+  const c=document.getElementById('newManagerCompany').value;
+  if(!n)return;
+  state.managers.push({name:n,company:c});render();await saveToFirebase();
+};
+window.addCustomTab=async()=>{
+  const l=document.getElementById('newTab').value.trim();
+  if(!l)return;
+  const id='custom_'+Date.now();
+  state.customTabs.push({id,label:l,carIds:[]});activeTab=id;render();await saveToFirebase();
+};
+window.deleteTab=async id=>{
+  if(!confirm('Delete this tab?'))return;
+  state.customTabs=state.customTabs.filter(t=>t.id!==id);render();await saveToFirebase();
+};
+window.deleteManager=async name=>{
+  if(!confirm('Delete manager tab "'+name+'"? Cars assigned to this manager will not be deleted.'))return;
+  state.managers=state.managers.filter(m=>m.name!==name);
+  if(activeTab===name) activeTab='all';
+  render();await saveToFirebase();showNotify('Manager deleted');
+};
+window.deleteCompany=async name=>{
+  if(!confirm('Delete company "'+name+'"?'))return;
+  state.companies=state.companies.filter(c=>c!==name);
+  render();await saveToFirebase();showNotify('Company deleted');
+};
+window.exportExcel=()=>{
+  const wb = XLSX.utils.book_new();
+  
+  // All Cars sheet
+  const allData = [
+    ['Plate','Driver Name','Car Model','City','Company','Manager','Current KM','Driven KM','Notes','Has License Photo'],
+    ...state.cars.map(c=>[c.plate,c.name,c.model,c.city,c.company,c.manager,c.currentKm?Number(c.currentKm):'',c.drivenKm?Number(c.drivenKm):'',c.notes,c.license?'Yes':'No'])
+  ];
+  const wsAll = XLSX.utils.aoa_to_sheet(allData);
+  wsAll['!cols'] = [{wch:14},{wch:28},{wch:18},{wch:14},{wch:10},{wch:18},{wch:12},{wch:12},{wch:20},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, wsAll, 'All Cars');
+  
+  // One sheet per manager
+  state.managers.forEach(m=>{
+    const cars = state.cars.filter(c=>c.manager===m.name);
+    if(cars.length===0) return;
+    const data = [
+      ['Plate','Driver Name','Car Model','City','Company','Current KM','Driven KM','Notes'],
+      ...cars.map(c=>[c.plate,c.name,c.model,c.city,c.company,c.currentKm?Number(c.currentKm):'',c.drivenKm?Number(c.drivenKm):'',c.notes])
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    ws['!cols'] = [{wch:14},{wch:28},{wch:18},{wch:14},{wch:10},{wch:12},{wch:12},{wch:20}];
+    const sheetName = m.name.slice(0,31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  // Dashboard summary sheet
+  const summary = [
+    ['Company','Total Cars'],
+    ...state.companies.map(c=>[c, state.cars.filter(car=>car.company===c).length]),
+    ['',''],
+    ['Manager','Company','Total Cars'],
+    ...state.managers.map(m=>[m.name, m.company, state.cars.filter(c=>c.manager===m.name).length])
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet(summary);
+  wsSummary['!cols'] = [{wch:20},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, wsSummary, 'Dashboard');
+
+  const date = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, 'fleet-export-'+date+'.xlsx');
+  showNotify('✓ Excel file downloaded');
+};
+window.exportBackup=()=>{
+  const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='fleet-backup-'+new Date().toISOString().slice(0,10)+'.json';a.click();
+};
+window.importBackup=async e=>{
+  const file=e.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=async ev=>{
+    try{state=JSON.parse(ev.target.result);render();await saveToFirebase();showNotify('Backup restored');}
+    catch{showNotify('Invalid backup file',true);}
+  };
+  r.readAsText(file);e.target.value='';
+};
+
+// Init — load from Firebase, fall back to initial data
+async function init(){
+  try {
+    const snap = await getDoc(FLEET_DOC);
+    if(snap.exists()){
+      state = snap.data();
+      showNotify('✓ Connected to cloud database'); checkAutoBackup();
+    } else {
+      state = JSON.parse(JSON.stringify(INIT_DATA));
+      await setDoc(FLEET_DOC, state);
+      showNotify('✓ Database initialized with fleet data'); checkAutoBackup();
+    }
+  } catch(e){
+    showNotify('⚠ Could not connect to database. Check Firestore rules.', true); checkAutoBackup();
+    state = JSON.parse(JSON.stringify(INIT_DATA));
+  }
+  render();
+
+  // Listen for real-time updates from other users
+  onSnapshot(FLEET_DOC, snap=>{
+    if(snap.exists()&&!saving){
+      state = snap.data();
+      render();
+    }
+  });
+}
+
+init();
+
+// Auto-backup: once per day, download a backup automatically
+function checkAutoBackup(){
+  const last = localStorage.getItem('lastBackup');
+  const today = new Date().toISOString().slice(0,10);
+  if(last === today) return;
+  setTimeout(()=>{
+    if(!state) return;
+    const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'fleet-backup-'+today+'.json';
+    a.click();
+    localStorage.setItem('lastBackup', today);
+    showNotify('📦 Daily backup downloaded automatically');
+  }, 3000);
+}
+</script>
+</body>
+</html>
