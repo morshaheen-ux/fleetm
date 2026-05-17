@@ -340,7 +340,7 @@ function renderTable(){
       </tr>`).join('');
   return `
     <div class="toolbar">
-      <input value="${esc(search)}" oninput="setSearch(this.value)" placeholder="Search plate, name, model, city..."/>
+      <input id="searchInput" value="${esc(search)}" oninput="setSearch(this.value)" placeholder="Search plate, name, model, city..." autocomplete="off"/>
       <select onchange="setFilter(this.value)">
         <option${filterCompany==='All'?' selected':''}>All</option>
         ${state.companies.map(c=>`<option${filterCompany===c?' selected':''}>${esc(c)}</option>`).join('')}
@@ -405,6 +405,11 @@ function renderSettings(){
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="importBackup(event)"/>
     </div>
     <p style="font-size:11px;color:#888;margin-top:6px">Excel export includes all cars with all details — open in Excel or Google Sheets</p>
+    <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn-blue" onclick="document.getElementById('importExcelFile').click()">📂 Import from Excel</button>
+      <input type="file" id="importExcelFile" accept=".xlsx,.xls" style="display:none" onchange="importExcel(event)"/>
+    </div>
+    <p style="font-size:11px;color:#888;margin-top:4px">Excel must have columns: plate, name, model, city, company, manager, currentKm, drivenKm, notes</p>
   </div>`;
 }
 
@@ -463,6 +468,8 @@ function renderModal(){
 }
 
 function render(){
+  const wasSearchFocused = document.activeElement && document.activeElement.id === 'searchInput';
+  const searchVal = wasSearchFocused ? document.activeElement.value : null;
   let content='';
   if(activeTab==='dashboard') content=renderDashboard();
   else if(activeTab==='settings') content=renderSettings();
@@ -476,11 +483,44 @@ function render(){
     </div>
     <div class="content">${content}</div>
     ${renderModal()}`;
+  // Restore search focus and cursor position after render
+  if(wasSearchFocused){
+    const si = document.getElementById('searchInput');
+    if(si){ si.focus(); si.value = searchVal; si.setSelectionRange(si.value.length, si.value.length); }
+  }
 }
 
 // Global actions
 window.setTab=t=>{activeTab=t;search='';filterCompany='All';render();}
-window.setSearch=v=>{search=v;render();}
+window.setSearch=v=>{
+  search=v;
+  // Only re-render the table body, not the whole page
+  const tbody = document.querySelector('tbody');
+  const countEl = document.querySelector('.count');
+  if(tbody && countEl){
+    const cars = getFiltered();
+    countEl.textContent = cars.length + ' car' + (cars.length!==1?'s':'');
+    if(cars.length===0){
+      tbody.innerHTML = '<tr><td colspan="11" class="no-results">No cars found</td></tr>';
+    } else {
+      tbody.innerHTML = cars.map(car=>`<tr onclick="openCar(${car.id})">
+        <td class="plate">${esc(car.plate)}</td>
+        <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(car.name||'—')}</td>
+        <td>${esc(car.model||'—')}</td>
+        <td>${esc(car.city||'—')}</td>
+        <td>${badge(car.company)}</td>
+        <td style="color:#888;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(car.manager)}</td>
+        <td>${car.currentKm?Number(car.currentKm).toLocaleString()+' km':'—'}</td>
+        <td>${car.drivenKm?Number(car.drivenKm).toLocaleString()+' km':'—'}</td>
+        <td style="color:#888;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(car.notes||'—')}</td>
+        <td>${car.license?'<span class="license-icon">✓</span>':'—'}</td>
+        <td><button class="btn-red" style="height:26px;padding:2px 7px;font-size:11px" onclick="event.stopPropagation();deleteCar(${car.id})">✕</button></td>
+      </tr>`).join('');
+    }
+  } else {
+    render();
+  }
+}
 window.setFilter=v=>{filterCompany=v;render();}
 window.openCar=id=>{selectedCar=state.cars.find(c=>c.id===id);modal='detail';render();}
 window.openModal=m=>{modal=m;render();}
@@ -600,6 +640,55 @@ window.exportExcel=()=>{
   const date = new Date().toISOString().slice(0,10);
   XLSX.writeFile(wb, 'fleet-export-'+date+'.xlsx');
   showNotify('✓ Excel file downloaded');
+};
+window.importExcel=async e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      const wb = XLSX.read(ev.target.result, {type:'binary'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws);
+      if(rows.length===0){showNotify('No data found in Excel',true);return;}
+      
+      // Map excel rows to car objects
+      const newCars = rows.map((row,i)=>({
+        id: Date.now()+i,
+        plate: String(row.plate||row.Plate||row.PLATE||row['Plate / Kennzeichen']||'').trim(),
+        name: String(row.name||row.Name||row.NAME||row['Driver Name']||row['Driver']||'').trim(),
+        model: String(row.model||row.Model||row.MODEL||row['Car Model']||'').trim(),
+        city: String(row.city||row.City||row.CITY||'').trim(),
+        company: String(row.company||row.Company||row.COMPANY||'').trim(),
+        manager: String(row.manager||row.Manager||row.MANAGER||row['Tab']||'').trim(),
+        currentKm: String(row.currentKm||row['Current KM']||row['Current km']||'').trim(),
+        drivenKm: String(row.drivenKm||row['Driven KM']||row['Driven km']||'').trim(),
+        notes: String(row.notes||row.Notes||row.NOTES||'').trim(),
+        license: '',
+      })).filter(c=>c.plate);
+
+      if(newCars.length===0){showNotify('No valid cars found. Make sure Excel has a "plate" column',true);return;}
+      
+      if(confirm(`Found ${newCars.length} cars in Excel. Do you want to:
+
+OK = Add to existing cars
+Cancel = Replace all existing cars`)){
+        // Add to existing
+        state.cars = [...state.cars, ...newCars];
+      } else {
+        // Replace all
+        state.cars = newCars;
+      }
+      
+      render();
+      await saveToFirebase();
+      showNotify(`✓ Imported ${newCars.length} cars from Excel`);
+    } catch(err){
+      showNotify('Error reading Excel file: '+err.message, true);
+    }
+  };
+  reader.readAsBinaryString(file);
+  e.target.value='';
 };
 window.exportBackup=()=>{
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
