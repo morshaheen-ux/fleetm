@@ -62,6 +62,21 @@ tr:hover td{background:#fafafa;cursor:pointer}
 .action-row{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 .license-icon{color:#3b6d11;font-weight:bold}
 .no-results{padding:32px;text-align:center;color:#aaa}
+.login-screen{position:fixed;inset:0;background:#f0ede8;display:flex;align-items:center;justify-content:center;z-index:9999}
+.login-box{background:#fff;border-radius:12px;padding:32px;width:min(380px,90vw);box-shadow:0 4px 20px rgba(0,0,0,0.1);text-align:center}
+.login-logo{font-size:40px;margin-bottom:8px}
+.login-title{font-size:20px;font-weight:600;margin-bottom:4px}
+.login-sub{font-size:13px;color:#888;margin-bottom:24px}
+.login-input{width:100%;height:42px;font-size:15px;border:1px solid #ddd;border-radius:8px;padding:0 14px;margin-bottom:12px;text-align:center;letter-spacing:2px}
+.login-btn{width:100%;height:42px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:15px;cursor:pointer;font-weight:500}
+.login-btn:hover{background:#333}
+.login-error{color:#a32d2d;font-size:13px;margin-top:8px;display:none}
+.maint-ok{background:#eaf3de;color:#3b6d11;border:1px solid #c0dd97;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:500}
+.maint-soon{background:#faeeda;color:#854f0b;border:1px solid #fac775;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:500}
+.maint-overdue{background:#fcebeb;color:#a32d2d;border:1px solid #f7c1c1;border-radius:5px;padding:2px 8px;font-size:11px;font-weight:500}
+.maint-none{background:#f0f0f0;color:#888;border:1px solid #ddd;border-radius:5px;padding:2px 8px;font-size:11px}
+.alert-box{background:#fcebeb;border:1px solid #f7c1c1;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.alert-box-warn{background:#faeeda;border:1px solid #fac775;border-radius:8px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px}
 .plate{font-weight:600;letter-spacing:0.3px}
 .loading{text-align:center;padding:40px;color:#888;font-size:15px}
 .sync-badge{font-size:11px;color:#888;margin-left:8px}
@@ -312,12 +327,18 @@ function renderTabs(){
     {id:'all',label:'All Cars'},{id:'dashboard',label:'Dashboard'},
     ...state.managers.map(m=>{const c=getColor(m.company,state.companies);return{id:m.name,label:m.name,color:c.text};}),
     ...state.customTabs.map(t=>({id:t.id,label:t.label,color:'#185fa5'})),
+    {id:'maintenance',label:()=>{
+      const overdue=state?state.cars.filter(c=>getMaintStatus(c)==='overdue').length:0;
+      const soon=state?state.cars.filter(c=>getMaintStatus(c)==='soon').length:0;
+      const total=overdue+soon;
+      return '🔧 Maintenance'+(total>0?` <span style="background:#a32d2d;color:#fff;border-radius:10px;padding:1px 6px;font-size:10px;margin-left:4px">${total}</span>`:'');
+    }},
     {id:'settings',label:'⚙'},
   ];
-  return tabs.map(t=>{
+  return tabs.map(t=>{ const labelHtml = typeof t.label==='function'?t.label():esc(t.label);
     const active = activeTab===t.id;
     const style = active&&t.color?`border-bottom-color:${t.color};color:${t.color}`:'';
-    return `<button class="tab${active?' active':''}" style="${style}" onclick="setTab('${esc(t.id)}')">${esc(t.label)}</button>`;
+    return `<button class="tab${active?' active':''}" style="${style}" onclick="setTab('${esc(t.id)}')">${labelHtml}</button>`;
   }).join('');
 }
 
@@ -415,6 +436,36 @@ function renderSettings(){
 
 function renderModal(){
   if(!modal) return '';
+  if(modal==='maint'&&selectedCar){
+    const car=selectedCar;
+    return `<div class="overlay" onclick="if(event.target===this)closeModal()">
+      <div class="modal">
+        <div class="modal-header"><div class="modal-title">🔧 Maintenance — ${esc(car.plate)}</div><button class="close-btn" onclick="closeModal()">×</button></div>
+        <div class="form-group"><label>Maintenance Type</label>
+          <select id="m_type">
+            ${['Oil Change','Tire Change','Inspection (TÜV)','Brake Service','Filter Change','Full Service','Other'].map(t=>`<option${(car.maintType||''===t)?' selected':''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Last Service Date</label><input type="date" id="m_date" value="${esc(car.maintDate||'')}"/></div>
+          <div class="form-group"><label>Next Service Date</label><input type="date" id="m_nextDate" value="${esc(car.maintNextDate||'')}"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Next Service km</label><input type="number" id="m_nextKm" value="${esc(car.maintNextKm||'')}" placeholder="e.g. 50000"/></div>
+          <div class="form-group"><label>Service Interval (km)</label><input type="number" id="m_interval" value="${esc(car.maintInterval||'')}" placeholder="e.g. 10000"/></div>
+        </div>
+        <div class="form-group"><label>Notes</label><input id="m_notes" value="${esc(car.maintNotes||'')}"/></div>
+        <div style="margin-top:8px;padding:10px;background:#f5f5f5;border-radius:6px;font-size:12px">
+          Status: ${getMaintLabel(car)}
+          ${car.maintNextDate?`<span style="margin-left:8px;color:#888">Next service: ${esc(car.maintNextDate)}</span>`:''}
+        </div>
+        <div class="action-row">
+          <button onclick="closeModal()">Cancel</button>
+          <button class="btn-blue" onclick="saveMaint(${car.id})">Save Maintenance</button>
+        </div>
+      </div>
+    </div>`;
+  }
   if(modal==='add'||modal==='edit'){
     const car = modal==='edit'?selectedCar:{plate:'',name:'',model:'',city:'',manager:state.managers[0]?.name||'',company:state.companies[0]||'',notes:'',license:'',currentKm:'',drivenKm:''};
     return `<div class="overlay" onclick="if(event.target===this)closeModal()">
@@ -467,12 +518,88 @@ function renderModal(){
   return '';
 }
 
+function getMaintStatus(car){
+  if(!car.maintDate && !car.maintKm) return 'none';
+  const today = new Date();
+  
+  // Check date-based
+  if(car.maintNextDate){
+    const next = new Date(car.maintNextDate);
+    const daysLeft = Math.ceil((next - today) / (1000*60*60*24));
+    if(daysLeft < 0) return 'overdue';
+    if(daysLeft <= 30) return 'soon';
+  }
+  
+  // Check km-based
+  if(car.maintNextKm && car.currentKm){
+    const kmLeft = Number(car.maintNextKm) - Number(car.currentKm);
+    if(kmLeft < 0) return 'overdue';
+    if(kmLeft <= 500) return 'soon';
+  }
+  
+  return 'ok';
+}
+
+function getMaintLabel(car){
+  const status = getMaintStatus(car);
+  if(status==='none') return '<span class="maint-none">Not set</span>';
+  if(status==='overdue') return '<span class="maint-overdue">⚠ Overdue</span>';
+  if(status==='soon') return '<span class="maint-soon">⏰ Due Soon</span>';
+  return '<span class="maint-ok">✓ OK</span>';
+}
+
+function renderMaintenance(){
+  const overdue = state.cars.filter(c=>getMaintStatus(c)==='overdue');
+  const soon = state.cars.filter(c=>getMaintStatus(c)==='soon');
+  const ok = state.cars.filter(c=>getMaintStatus(c)==='ok');
+  const notSet = state.cars.filter(c=>getMaintStatus(c)==='none');
+
+  let alerts = '';
+  if(overdue.length>0) alerts += `<div class="alert-box">🚨 <strong>${overdue.length} car${overdue.length>1?'s are':' is'} overdue for maintenance!</strong> — ${overdue.map(c=>esc(c.plate)).join(', ')}</div>`;
+  if(soon.length>0) alerts += `<div class="alert-box-warn">⏰ <strong>${soon.length} car${soon.length>1?'s are':' is'} due for maintenance soon</strong> — ${soon.map(c=>esc(c.plate)).join(', ')}</div>`;
+
+  const allCars = [...overdue, ...soon, ...ok, ...notSet];
+  
+  const rows = allCars.map(car=>`
+    <tr onclick="openMaintModal(${car.id})" style="cursor:pointer">
+      <td class="plate">${esc(car.plate)}</td>
+      <td>${esc(car.name||'—')}</td>
+      <td>${badge(car.company)}</td>
+      <td>${esc(car.manager)}</td>
+      <td>${car.currentKm?Number(car.currentKm).toLocaleString()+' km':'—'}</td>
+      <td>${esc(car.maintType||'—')}</td>
+      <td>${esc(car.maintDate||'—')}</td>
+      <td>${esc(car.maintNextDate||'—')}</td>
+      <td>${car.maintNextKm?Number(car.maintNextKm).toLocaleString()+' km':'—'}</td>
+      <td>${getMaintLabel(car)}</td>
+    </tr>`).join('');
+
+  return `
+    ${alerts}
+    <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+      <div class="stat-card" style="flex:1;min-width:100px;border-top:3px solid #a32d2d"><div class="stat-label">Overdue</div><div class="stat-value" style="color:#a32d2d">${overdue.length}</div></div>
+      <div class="stat-card" style="flex:1;min-width:100px;border-top:3px solid #854f0b"><div class="stat-label">Due Soon</div><div class="stat-value" style="color:#854f0b">${soon.length}</div></div>
+      <div class="stat-card" style="flex:1;min-width:100px;border-top:3px solid #3b6d11"><div class="stat-label">OK</div><div class="stat-value" style="color:#3b6d11">${ok.length}</div></div>
+      <div class="stat-card" style="flex:1;min-width:100px;border-top:3px solid #ccc"><div class="stat-label">Not Set</div><div class="stat-value" style="color:#888">${notSet.length}</div></div>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>Plate</th><th>Driver</th><th>Company</th><th>Manager</th><th>Current km</th>
+          <th>Type</th><th>Last Service</th><th>Next Date</th><th>Next km</th><th>Status</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
 function render(){
   const wasSearchFocused = document.activeElement && document.activeElement.id === 'searchInput';
   const searchVal = wasSearchFocused ? document.activeElement.value : null;
   let content='';
   if(activeTab==='dashboard') content=renderDashboard();
   else if(activeTab==='settings') content=renderSettings();
+  else if(activeTab==='maintenance') content=renderMaintenance();
   else content=renderTable();
   document.getElementById('app').innerHTML=`
     <div class="topbar">
@@ -587,6 +714,41 @@ window.addCustomTab=async()=>{
 window.deleteTab=async id=>{
   if(!confirm('Delete this tab?'))return;
   state.customTabs=state.customTabs.filter(t=>t.id!==id);render();await saveToFirebase();
+};
+window.changePassword=()=>{
+  const p1 = document.getElementById('newPw1').value;
+  const p2 = document.getElementById('newPw2').value;
+  if(!p1){showNotify('Please enter a new password',true);return;}
+  if(p1!==p2){showNotify('Passwords do not match',true);return;}
+  if(p1.length<4){showNotify('Password must be at least 4 characters',true);return;}
+  PASSWORD = p1;
+  localStorage.setItem('fleetPassword', p1);
+  document.getElementById('newPw1').value='';
+  document.getElementById('newPw2').value='';
+  showNotify('✓ Password changed successfully');
+};
+window.logout=()=>{
+  sessionStorage.removeItem('fleet_auth');
+  showLoginScreen();
+};
+window.openMaintModal=id=>{selectedCar=state.cars.find(c=>c.id===id);modal='maint';render();}
+window.saveMaint=async id=>{
+  const i=state.cars.findIndex(c=>c.id===id);
+  if(i===-1)return;
+  state.cars[i]={
+    ...state.cars[i],
+    maintType:document.getElementById('m_type').value,
+    maintDate:document.getElementById('m_date').value,
+    maintNextDate:document.getElementById('m_nextDate').value,
+    maintNextKm:document.getElementById('m_nextKm').value,
+    maintInterval:document.getElementById('m_interval').value,
+    maintNotes:document.getElementById('m_notes').value,
+  };
+  selectedCar=state.cars[i];
+  modal=null;
+  render();
+  await saveToFirebase();
+  showNotify('✓ Maintenance saved');
 };
 window.deleteManager=async name=>{
   if(!confirm('Delete manager tab "'+name+'"? Cars assigned to this manager will not be deleted.'))return;
@@ -722,6 +884,14 @@ async function init(){
     state = JSON.parse(JSON.stringify(INIT_DATA));
   }
   render();
+  // Show maintenance alerts on load
+  setTimeout(()=>{
+    if(!state) return;
+    const overdue=state.cars.filter(c=>getMaintStatus(c)==='overdue').length;
+    const soon=state.cars.filter(c=>getMaintStatus(c)==='soon').length;
+    if(overdue>0) showNotify('🚨 '+overdue+' car(s) overdue for maintenance!',true);
+    else if(soon>0) showNotify('⏰ '+soon+' car(s) due for maintenance soon');
+  },2000);
 
   // Listen for real-time updates from other users
   onSnapshot(FLEET_DOC, snap=>{
@@ -732,7 +902,51 @@ async function init(){
   });
 }
 
-init();
+// Password protection
+let PASSWORD = localStorage.getItem('fleetPassword') || 'Fleet2024!';
+const SESSION_KEY = 'fleet_auth';
+
+function checkAuth(){
+  return sessionStorage.getItem(SESSION_KEY) === 'true';
+}
+
+function showLoginScreen(){
+  document.getElementById('app').innerHTML = `
+    <div class="login-screen">
+      <div class="login-box">
+        <div class="login-logo">🚗</div>
+        <div class="login-title">Fleet Management</div>
+        <div class="login-sub">Enter password to access</div>
+        <input class="login-input" type="password" id="pwInput" placeholder="Password" 
+          onkeydown="if(event.key==='Enter')checkPassword()"/>
+        <button class="login-btn" onclick="checkPassword()">Access Fleet</button>
+        <div class="login-error" id="pwError">Wrong password. Please try again.</div>
+      </div>
+    </div>`;
+  setTimeout(()=>{
+    const inp = document.getElementById('pwInput');
+    if(inp) inp.focus();
+  },100);
+}
+
+window.checkPassword=()=>{
+  const val = document.getElementById('pwInput').value;
+  if(val === PASSWORD){
+    sessionStorage.setItem(SESSION_KEY, 'true');
+    init();
+  } else {
+    const err = document.getElementById('pwError');
+    if(err) err.style.display='block';
+    document.getElementById('pwInput').value='';
+    document.getElementById('pwInput').focus();
+  }
+};
+
+if(checkAuth()){
+  init();
+} else {
+  showLoginScreen();
+}
 
 // Auto-backup: once per day, download a backup automatically
 function checkAutoBackup(){
